@@ -1,0 +1,74 @@
+package com.company;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.net.Socket;
+import java.util.Scanner;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+public class ClientChat {
+
+    private Socket socketClient;
+
+
+    public ClientChat(){
+       start();
+       communication();
+    }
+    private void start(){
+        try {
+            socketClient = new Socket("localhost", 8865);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void communication(){
+        try {
+            DataInputStream in = new DataInputStream(socketClient.getInputStream());
+            DataOutputStream out = new DataOutputStream(socketClient.getOutputStream());
+            Scanner scanner = new Scanner(System.in);
+            AtomicBoolean isTernOff = new AtomicBoolean(true);
+
+            new Thread(()->{
+                try {
+                   while (true){
+                        String outboxMessage = in.readUTF();
+                        if (outboxMessage.equals("/end")){
+                            isTernOff.set(false);
+                            System.out.println("Сервер отключился нажмите Enter ");
+                            break;
+                        }
+                        System.out.println("Сервер сказал:" + outboxMessage);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+            new Thread(()->{
+                try {
+            while (true) {
+                String message = scanner.nextLine();
+                if (!isTernOff.get()) {
+                    out.writeUTF("/end");
+                    break;
+                }
+                out.writeUTF(message);
+            }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+
+        new ClientChat();
+    }
+}
